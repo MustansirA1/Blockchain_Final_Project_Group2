@@ -120,3 +120,50 @@ def sales_new():
     )
     response = {'message': f'Transaction completed. It will show when the newCar is sold/mined {index}'}
     return (jsonify(response), 201)
+
+#overview to see the history of the car and other transactions made
+@app.route('/CarHistory', methods=['GET'])
+#contains all transactions made currently but not in the past
+def full_ledger():
+    response = {
+        'ledger': CV.ledger,
+        'length': len(CV.ledger)
+    }
+    return jsonify(response), 200
+
+
+#This function will get all of the information from the transactions (which include accidents, modifications, mileage, etc) made and create a new block for that transaction
+@app.route('/newCar', methods=['GET'])
+def car_block():
+    CV.sale_add(
+        accidents=0,
+        modifications="0",
+        condition="0",
+        mileage=0,
+        vin="CA1MS37A0PW123456",
+        cost=0,
+        seller="unknown",
+        buyer="unknown"
+    )
+    last_block_hash = CV.hash_of_block(CV.last_block)
+    index = len(CV.ledger)
+    n = CV.Proof_of_Work(index, last_block_hash, CV.recent_cars_sold)
+    block = CV.append_block(n, last_block_hash)
+    response = {
+        'message': "New block has been mined for the recent car purchase",
+        'index': block['index'],
+        'hash_of_last_sale': block['last_sale_hash'],
+        'nonce': block['nonce'],
+        'transaction': block['transactions']
+    }
+    return jsonify(response), 200
+
+#This function allows the customer to see all of the past transactions (which include accidents, modifications, mileage, etc) that have been made for the car before buying it. 
+@app.route('/allCarSales', methods=['GET'])
+def car_sales():
+    global all_car_sales
+    response = all_car_sales
+    return (jsonify(response), 201)
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=8000)
