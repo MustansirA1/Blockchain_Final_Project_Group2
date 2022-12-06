@@ -43,3 +43,80 @@ class carVerifications(object):
         newData = f'{index},{last_sale_hash},{car_sales},{n}'.encode()
         newHash = hashlib.sha512(newData).hexdigest()
         return newHash[:len(self.hash_secure_level)] == self.hash_secure_level
+    
+    #function to append lock to the blockchain
+    def append_block(self, n, last_sale_hash):
+        newBlock = {
+            'index': len(self.ledger),
+            'transactions': self.recent_cars_sold,
+            'nonce': n,
+            'last_sale_hash': last_sale_hash
+        }
+        self.recent_cars_sold = []
+        self.ledger.append(newBlock)
+        return newBlock
+
+    #function for sale, give values for all the fields
+    def sale_add(self, accidents, modifications, condition, mileage, vin, cost, seller, buyer):
+        self.recent_cars_sold.append({
+            'accidents': accidents,
+            'modifications': modifications,
+            'condition': condition,
+            'mileage': mileage,
+            'vin': vin,
+            'cost': cost,
+            'seller': seller,
+            'buyer': buyer
+        })
+        #makes all car sales global and all the fields below it
+        global all_car_sales
+        all_car_sales.append({
+            'accidents': accidents,
+            'modifications': modifications,
+            'condition': condition,
+            'mileage': mileage,
+            'vin': vin,
+            'cost': cost,
+            'seller': seller,
+            'buyer': buyer
+        })
+        return self.last_block['index'] + 1
+
+    #proerty gives special functions for post and get
+    @property
+    def last_block(self):
+        return self.ledger[-1]
+
+#Creating an app for using postman as the gui
+app = Flask(__name__)
+CV = carVerifications()
+
+#overview to see the history of the car and other transactions made
+@app.route('/CarHistory', methods=['GET'])
+#contains all transactions made currently but not in the past
+def full_ledger():
+    response = {
+        'ledger': CV.ledger,
+        'length': len(CV.ledger)
+    }
+    return jsonify(response), 200
+
+#new transactions that are currently made. It will allow the individual to enter specifics of a car that a customer needs to know before buying.
+@app.route('/carSale/new', methods=['POST'])
+def sales_new():
+    values = request.get_json()
+    required_fields = ['accidents', 'modifications', 'condition', 'mileage', 'vin', 'cost', 'seller', 'buyer']
+    if not all(k in values for k in required_fields):
+        return ('Missing Fields', 400)
+    index = CV.sale_add(
+        values['accidents'],
+        values['modifications'],
+        values['condition'],
+        values['mileage'],
+        values['vin'],
+        values['cost'],
+        values['seller'],
+        values['buyer']
+    )
+    response = {'message': f'Transaction completed. It will show when the newCar is sold/mined {index}'}
+    return (jsonify(response), 201)
